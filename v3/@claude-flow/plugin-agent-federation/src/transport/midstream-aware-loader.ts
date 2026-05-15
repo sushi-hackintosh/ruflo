@@ -28,14 +28,63 @@
  * surface from agentic-flow so consumers only import from one place.
  */
 
-import {
-  loadQuicTransport,
-  type AgentTransport,
-  type AgentMessage,
-  type QuicTransportConfig,
+// Type-only imports are erased at compile time — they do not force the
+// installation of `agentic-flow`. The value import (`loadQuicTransport`)
+// is now lazy via `loadAgenticFlowQuicTransport()` below so the
+// federation plugin can install + boot in environments that block the
+// koa transitive chain that agentic-flow pulls in (e.g. hardened npm
+// registries that block `cookies@0.9.1` per issue #1949).
+import type {
+  AgentTransport,
+  AgentMessage,
+  QuicTransportConfig,
 } from 'agentic-flow/transport/loader';
 
 export type { AgentTransport, AgentMessage, QuicTransportConfig };
+
+/**
+ * Lazy loader for agentic-flow's `loadQuicTransport`. Returns `null`
+ * when `agentic-flow` is not installed — callers must then fall back
+ * to the midstream-first path or surface a clear error.
+ *
+ * Per ADR-120 + issue #1949, `agentic-flow` is now an **optional**
+ * peer dependency. Operators who only want the midstream-native
+ * transport (via `MIDSTREAMER_QUIC_NATIVE=1`) can omit it to avoid
+ * the deep `koa-router` → `cookies@0.9.1` transitive chain that
+ * hardened npm registries reject.
+ */
+async function loadAgenticFlowQuicTransport(
+  config?: QuicTransportConfig,
+): Promise<AgentTransport | null> {
+  // Direct dynamic `import()` (not the `new Function` trick) so
+  // test frameworks like vitest can intercept via `vi.mock`. The
+  // try/catch makes the module-not-found case a clean `null` so the
+  // caller falls back gracefully — agentic-flow is now an optional
+  // peer dependency.
+  let mod: {
+    loadQuicTransport?: (c?: QuicTransportConfig) => Promise<AgentTransport>;
+    default?: {
+      loadQuicTransport?: (c?: QuicTransportConfig) => Promise<AgentTransport>;
+    };
+  };
+  try {
+    mod = (await import('agentic-flow/transport/loader')) as typeof mod;
+  } catch {
+    return null;
+  }
+  const fn =
+    typeof mod.loadQuicTransport === 'function'
+      ? mod.loadQuicTransport
+      : mod.default?.loadQuicTransport;
+  if (typeof fn !== 'function') {
+    return null;
+  }
+  try {
+    return await fn(config);
+  } catch {
+    return null;
+  }
+}
 
 /** Result envelope describing which backend the loader picked. */
 export interface LoadedFederationTransport {
@@ -160,7 +209,15 @@ export async function loadFederationTransport(
     return { transport: probe.transport, source: 'midstreamer-native' };
   }
 
-  const transport = await loadQuicTransport(config);
+  const transport = await loadAgenticFlowQuicTransport(config);
+  if (!transport) {
+    throw new Error(
+      'No federation transport available. Install `agentic-flow` ' +
+        '(default) or `midstreamer` and set `MIDSTREAMER_QUIC_NATIVE=1` ' +
+        '(per ADR-120). Both are now optional peer dependencies — at ' +
+        'least one must be present at runtime.',
+    );
+  }
   return {
     transport,
     source: 'agentic-flow-loader',

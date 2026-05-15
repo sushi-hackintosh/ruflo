@@ -238,6 +238,36 @@ const INVARIANTS = [
     why: 'plugin.ts dispatches through the midstream-aware loader. Reverting to the bare loadQuicTransport import bypasses the ADR-120 preference layer entirely.',
   },
 
+  // Issue #1949 — agentic-flow is an OPTIONAL peer dependency, not a
+  // hard runtime dep. Hardened npm registries that block the deep
+  // koa-router → cookies@0.9.1 transitive chain (under agentic-flow ->
+  // fastmcp -> mcp-proxy -> pipenet -> koa) can otherwise reject the
+  // plugin install with a 403 even on a clean checkout.
+  {
+    issue: '#1949',
+    file: 'v3/@claude-flow/plugin-agent-federation/package.json',
+    regex: /"peerDependencies"[\s\S]*?"agentic-flow"/,
+    why: 'agentic-flow must be a peer dependency (not a hard runtime dep) so hardened npm registries that block cookies@0.9.1 transitively can still install the federation plugin (issue #1949).',
+  },
+  {
+    issue: '#1949',
+    file: 'v3/@claude-flow/plugin-agent-federation/package.json',
+    regex: /"peerDependenciesMeta"[\s\S]*?"agentic-flow"[\s\S]*?"optional"\s*:\s*true/,
+    why: 'agentic-flow must be marked optional in peerDependenciesMeta so npm doesn\'t warn or fail when the peer is missing (#1949).',
+  },
+  {
+    issue: '#1949',
+    file: 'v3/@claude-flow/plugin-agent-federation/src/transport/midstream-aware-loader.ts',
+    substring: "import type {",
+    why: 'midstream-aware-loader.ts must use TYPE-ONLY imports from agentic-flow (which are erased at compile time). Reverting to a static value import would force users to install agentic-flow even when only midstreamer is needed (#1949).',
+  },
+  {
+    issue: '#1949',
+    file: 'v3/@claude-flow/plugin-agent-federation/src/transport/midstream-aware-loader.ts',
+    substring: "loadAgenticFlowQuicTransport",
+    why: 'midstream-aware-loader.ts must lazy-load agentic-flow via loadAgenticFlowQuicTransport so it can degrade gracefully when the peer dep is absent (#1949).',
+  },
+
   // ADR-120 Step 3 — ruflo-federation-peer Rust crate composes the
   // QUIC transport (midstreamer-quic) with the AIMDS 3-gate pipeline.
   {
