@@ -320,3 +320,51 @@ jobs:
           echo "$OUT" | grep -q "similarity" || { echo "FAIL: help text dropped similarity"; exit 1; }
           echo "✓ help text references similarity subcommand"
 
+  metaharness-real-data:
+    # iter 48 — the load-bearing integration gate at PR time. Unlike
+    # `similarity-tests` (which runs WITHOUT @metaharness/* to prove
+    # architectural constraint #1), this job INSTALLS the upstream dep
+    # and exercises the real CLI → fingerprint → similarity chain.
+    #
+    # This is the only CI surface that would have caught the iter-38
+    # schema-shape bug fixed in iter 47. Every other test uses hand-built
+    # fixtures that happened to have the correct shape.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Pre-flight — confirm metaharness CLI is reachable via npx
+        # The roundtrip test uses npx -y metaharness@latest, which fetches
+        # the package on first call. Warm the cache here so the test's
+        # 90s timeout doesn't expire on cold start.
+        run: |
+          npx -y metaharness@latest --version
+          echo "✓ metaharness CLI warm"
+
+      - name: End-to-end pipeline roundtrip (iter 47)
+        # Must exit 0. Exit 2 means metaharness wasn't reachable (we just
+        # warmed it, so that would be infra failure). Exit 1 means the
+        # roundtrip's load-bearing self-match invariant (overall===1)
+        # failed — that's the schema-shape regression iter 47 fixed.
+        run: |
+          node plugins/ruflo-metaharness/scripts/test-pipeline-roundtrip.mjs
+          echo "✓ full ADR-152 §3.1 pipeline works with real metaharness output"
+
+      - name: Cross-check — same path also produces valid score JSON via dispatcher
+        # Hits the iter-36 score subcommand via the iter-42-fixed dispatcher
+        # to confirm the CLI surface stays aligned with what oia-audit
+        # consumes internally.
+        run: |
+          set -e
+          cd v3/@claude-flow/cli
+          npm install --no-audit --no-fund --ignore-scripts --silent
+          npm run build
+          cd ../../../
+          OUT=$(node v3/@claude-flow/cli/bin/cli.js metaharness score --path . --format json)
+          echo "$OUT" | grep -q '"harnessFit"' || { echo "FAIL: score dispatcher dropped harnessFit"; exit 1; }
+          echo "✓ score dispatcher emits the expected metaharness schema"
+

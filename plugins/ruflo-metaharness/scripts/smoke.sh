@@ -191,6 +191,20 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z11. CI gate runs roundtrip with real metaharness installed (iter 48)"
+miss=""
+F="$ROOT/../../.github/workflows/metaharness-ci.yml"
+[[ -f "$F" ]] || miss="$miss workflow-missing"
+# The new job exists
+grep -q "^  metaharness-real-data:" "$F" 2>/dev/null || miss="$miss no-real-data-job"
+# Pre-flight warms the cache
+grep -q "Pre-flight — confirm metaharness CLI is reachable" "$F" 2>/dev/null || miss="$miss no-preflight"
+# Invokes the iter-47 roundtrip
+grep -q "test-pipeline-roundtrip.mjs" "$F" 2>/dev/null || miss="$miss no-roundtrip-step"
+# Cross-check via dispatcher
+grep -q "score dispatcher emits the expected metaharness schema" "$F" 2>/dev/null || miss="$miss no-cross-check"
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z10. end-to-end pipeline roundtrip (iter 47 — caught iter-38 schema bug)"
 F="$ROOT/scripts/test-pipeline-roundtrip.mjs"
 miss=""
