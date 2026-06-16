@@ -84,13 +84,16 @@ function main() {
     console.error(`mint: target ${ARGS.target} already exists`);
     process.exit(2);
   }
-  // ITER 27 FIX — the metaharness CLI's --target flag is ignored at
-  // runtime: `metaharness new <name>` writes to $CWD/<name> regardless
-  // of --target (verified against metaharness@0.1.12, 2026-06-16). The
-  // safety check above resolves ARGS.target outside the calling repo;
-  // we now point the subprocess CWD at target's parent + pass
-  // basename(target) as the CLI-side name, so the scaffold lands at
-  // exactly ARGS.target.
+  // ITER 27 FIX (forward-compatible) — at the time of writing,
+  // metaharness@0.1.12 silently ignored the --target flag and wrote
+  // to $CWD/<name> instead. Upstream issue #9
+  // (ruvnet/agent-harness-generator) was filed + fixed in 0.1.13
+  // within ~20 min — but this workaround is intentionally
+  // forward-compatible: setting `cwd: dirname(target)` + passing
+  // `basename(target)` as <name> produces the same correct landing
+  // path on BOTH broken (0.1.12) and fixed (0.1.13+) upstream
+  // versions. Keeping it as belt-and-braces against any future
+  // regression. See `iter 29` for the verification log.
   const parentDir = dirname(ARGS.target);
   const cliName = basename(ARGS.target);
   mkdirSync(parentDir, { recursive: true });
