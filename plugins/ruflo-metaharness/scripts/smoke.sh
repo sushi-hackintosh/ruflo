@@ -191,6 +191,23 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z14. roundtrip Stage 7 — drift detection actually fires on mutation (iter 51)"
+miss=""
+F="$ROOT/scripts/test-pipeline-roundtrip.mjs"
+# Stage 7 present
+grep -q "Stage 7 — drift detection on mutated audit" "$F" 2>/dev/null || miss="$miss no-stage-7"
+# Mutates all 3 similarity components (cosine + categorical + jaccard)
+grep -q "harnessFit - 40" "$F" 2>/dev/null || miss="$miss no-cosine-mutation"
+grep -q "iter-51-synthetic-archetype\|synthetic-archetype" "$F" 2>/dev/null || miss="$miss no-categorical-mutation"
+grep -q "iter-51-marker" "$F" 2>/dev/null || miss="$miss no-jaccard-mutation"
+# Critical assertions
+grep -q "drift detected — verdict !== near-identical" "$F" 2>/dev/null || miss="$miss no-verdict-flip"
+grep -q "drift detected — distance > 0" "$F" 2>/dev/null || miss="$miss no-distance-positive"
+grep -q "drift alert at threshold" "$F" 2>/dev/null || miss="$miss no-drift-alert"
+# Runtime: 31/31 (was 25/25 pre-iter-51)
+node "$F" 2>&1 | grep -q "31 passed, 0 failed" || miss="$miss roundtrip-not-31"
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z13. mcp-scan findings parsed from text → audit-trend diff works (iter 50)"
 miss=""
 HARNESS="$ROOT/scripts/_harness.mjs"
@@ -207,8 +224,8 @@ grep -q "label === 'mcp-scan'" "$OIA" 2>/dev/null || miss="$miss no-label-dispat
 OUT=$(node "$SCAN" --path . --format json 2>/dev/null)
 echo "$OUT" | grep -q '"findings": \[' || miss="$miss runtime-no-findings-array"
 echo "$OUT" | grep -q '"severity":' || miss="$miss runtime-no-severity-field"
-# Runtime: roundtrip passes 25/25 (was 24/24 with mcp-scan SKIP)
-node "$ROOT/scripts/test-pipeline-roundtrip.mjs" 2>&1 | grep -q "25 passed, 0 failed" || miss="$miss roundtrip-not-25"
+# Runtime: roundtrip passes (≥25 — iter 50 took it from 24, future iters keep climbing)
+node "$ROOT/scripts/test-pipeline-roundtrip.mjs" 2>&1 | grep -qE "(2[5-9]|[3-9][0-9]+) passed, 0 failed" || miss="$miss roundtrip-fewer-than-25"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
 step "17z12. roundtrip covers non-similarity schemas + flags mcp-scan gap (iter 49)"

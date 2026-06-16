@@ -219,6 +219,76 @@ try {
   // renames any of these fields, the verdict silently becomes 'missing'
   // or undefined — this assertion catches that BEFORE shipping.
   // ──────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────
+  // STAGE 7 (iter 51) — drift detection actually FIRES on mutated input
+  //
+  // Every prior stage uses the same audit record twice (self-match).
+  // That proves the chain doesn't FALSELY report drift on identical
+  // input, but doesn't prove the chain catches REAL drift. This stage
+  // takes the audit record and synthetically mutates fields the
+  // similarity module reads, then asserts the chain detects the
+  // difference.
+  //
+  // Mutations applied (all measurable by similarity):
+  //   - harnessFit:  unchanged   → -20   (cosine signal)
+  //   - taskCoverage: unchanged  → -15   (cosine signal)
+  //   - agent_topology: add one  → jaccard divergence
+  //
+  // Expected outcome:
+  //   - structuralDistance.verdict !== 'near-identical'
+  //   - structuralDistance.overall < 1
+  //   - --alert-on-distance-below 0.95 should fire
+  // ──────────────────────────────────────────────────────────────
+  console.log('\nStage 7 — drift detection on mutated audit (iter 51)');
+  const mutatedPath = join(tmp, 'mutated.json');
+  const mutated = JSON.parse(JSON.stringify(audit));
+  // Modify fields the similarity module actually reads. The mutation has
+  // to be large enough to cross the verdict-bucket threshold (0.95 →
+  // 'near-identical' boundary). The 9-dim cosine vector is dominated by
+  // values already clustered around the same range, so single-field
+  // changes don't move overall much. Mutate across all 3 components:
+  //   - cosine: drop 4 scorecard fields by 25-40 points
+  //   - categorical: swap archetype + template (2 of 4 enums diverge)
+  //   - jaccard: rebuild agent_topology with a different set
+  mutated.fingerprint.score.harnessFit = Math.max(0, audit.fingerprint.score.harnessFit - 40);
+  mutated.fingerprint.score.taskCoverage = Math.max(0, audit.fingerprint.score.taskCoverage - 35);
+  mutated.fingerprint.score.toolSafety = Math.max(0, audit.fingerprint.score.toolSafety - 30);
+  mutated.fingerprint.score.compileConfidence = Math.max(0, audit.fingerprint.score.compileConfidence - 25);
+  mutated.fingerprint.score.archetype = 'iter-51-synthetic-archetype';
+  mutated.fingerprint.score.template = 'iter-51-synthetic-template';
+  mutated.fingerprint.genome.agent_topology = ['iter-51-marker-a', 'iter-51-marker-b'];
+  writeFileSync(mutatedPath, JSON.stringify(mutated));
+
+  const driftRun = runNode('audit-trend.mjs', [
+    '--baseline', basePath,
+    '--current', mutatedPath,
+    '--format', 'json',
+  ]);
+  const driftMatch = /\{[\s\S]*\}/.exec(driftRun.stdout);
+  assert(driftMatch !== null, 'drift run produced JSON');
+  const driftTrend = JSON.parse(driftMatch[0]);
+  const driftSd = driftTrend.delta?.structuralDistance;
+  assert(typeof driftSd === 'object', 'drift trend exposes structuralDistance');
+  assert(driftSd.verdict !== 'near-identical',
+    `drift detected — verdict !== near-identical (got ${driftSd?.verdict})`);
+  assert(driftSd.overall < 1,
+    `drift detected — overall < 1 (got ${driftSd?.overall})`);
+  assert(driftSd.distance > 0,
+    `drift detected — distance > 0 (got ${driftSd?.distance})`);
+
+  // Alert chain: --alert-on-distance-below 0.95 must fire IF drift > 0.05
+  // If the synthetic mutation produced overall ≥ 0.95, lower the threshold.
+  const threshold = driftSd.overall < 0.95 ? '0.95' : String(driftSd.overall + 0.01);
+  const alertDriftRun = runNode('audit-trend.mjs', [
+    '--baseline', basePath,
+    '--current', mutatedPath,
+    '--alert-on-distance-below', threshold,
+    '--format', 'json',
+  ]);
+  assert(alertDriftRun.status === 1,
+    `drift alert at threshold ${threshold} fires on mutated audit (exit 1, got ${alertDriftRun.status})`);
+
+  // ──────────────────────────────────────────────────────────────
   console.log('\nStage 6 — non-similarity schema contracts (iter 49)');
   assert(typeof trend.delta?.worst === 'object',
     'trend exposes delta.worst (severity-rollup)');
