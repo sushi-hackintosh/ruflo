@@ -188,4 +188,45 @@ export const metaharnessTools: MCPTool[] = [
       return { success: !r.degraded, data: r.json, degraded: r.degraded, exitCode: r.exitCode };
     },
   },
+  {
+    name: 'metaharness_audit_list',
+    description: 'ADR-150 iter 16 — list timestamped records from the `metaharness-audit` memory namespace. Use this BEFORE metaharness_audit_trend to discover which audit keys exist to diff.',
+    category: 'metaharness',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Max records to return, newest first (default: 20)', default: 20 },
+        since: { type: 'string', description: 'Filter to last N(h|d|w|m), e.g. "30d" for last 30 days' },
+      },
+    },
+    handler: async (input) => {
+      const args: string[] = [];
+      if (input.limit !== undefined) args.push('--limit', String(input.limit));
+      if (input.since !== undefined) args.push('--since', String(input.since));
+      const r = await runScript('audit-list.mjs', args);
+      return { success: !r.degraded, data: r.json, degraded: r.degraded, exitCode: r.exitCode };
+    },
+  },
+  {
+    name: 'metaharness_audit_trend',
+    description: 'ADR-150 iter 15 — diff two oia-audit records (drift detection). Pulls baseline + current snapshots from the `metaharness-audit` memory namespace and surfaces composite worst-severity delta + per-component status change + introduced/cleared findings.',
+    category: 'metaharness',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        baselineKey: { type: 'string', description: 'Memory key for the older audit (run metaharness_audit_list first to discover keys)' },
+        currentKey: { type: 'string', description: 'Memory key for the newer audit' },
+        alertOnWorsening: { type: 'boolean', description: 'Set tool.alert.triggered when composite worst severity worsened', default: false },
+      },
+      required: ['baselineKey', 'currentKey'],
+    },
+    handler: async (input) => {
+      const baselineKey = input.baselineKey as string;
+      const currentKey = input.currentKey as string;
+      const args = ['--baseline-key', baselineKey, '--current-key', currentKey];
+      if (input.alertOnWorsening === true) args.push('--alert-on-worsening');
+      const r = await runScript('audit-trend.mjs', args);
+      return { success: !r.degraded, data: r.json, degraded: r.degraded, exitCode: r.exitCode };
+    },
+  },
 ];

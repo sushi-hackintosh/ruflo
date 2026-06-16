@@ -174,8 +174,8 @@ step "17m. metaharness MCP tools registered (ADR-150 deepest integration — ite
 F="$ROOT/../../v3/@claude-flow/cli/src/mcp-tools/metaharness-tools.ts"
 miss=""
 [[ -f "$F" ]] || miss="$miss tools-file-missing"
-# All 5 tools declared
-for tool in metaharness_score metaharness_genome metaharness_mcp_scan metaharness_threat_model metaharness_oia_audit; do
+# All 7 tools declared (5 static-analysis + 2 audit-observability — iter 20, 21)
+for tool in metaharness_score metaharness_genome metaharness_mcp_scan metaharness_threat_model metaharness_oia_audit metaharness_audit_list metaharness_audit_trend; do
   grep -q "name: '${tool}'" "$F" || miss="$miss missing-${tool}"
 done
 # ADR-150 architectural-constraint anchor: zero static @metaharness/* import
