@@ -191,6 +191,34 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z74. metaharness pin versions consistent across all 3 package.json (iter 111)"
+miss=""
+# Each of the 3 package.json files pins metaharness/@metaharness/*
+# independently. If they drift, behavior varies by install path:
+#   - `npm install ruflo` → uses ruflo/package.json
+#   - `npm install @claude-flow/cli` → uses cli/package.json
+#   - Repo-clone dev install → uses root package.json
+# Pin drift between them means CI tests one version while users get
+# another. iter-111 enforces matching pin strings across all three.
+ROOTPJ="$ROOT/../../package.json"
+RUFLOPJ="$ROOT/../../ruflo/package.json"
+CLIPJ="$ROOT/../../v3/@claude-flow/cli/package.json"
+for pkg in "metaharness" "@metaharness/router" "@metaharness/kernel"; do
+  ROOT_PIN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ROOTPJ')).optionalDependencies?.['$pkg'] || '')" 2>/dev/null)
+  RUFLO_PIN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$RUFLOPJ')).optionalDependencies?.['$pkg'] || '')" 2>/dev/null)
+  CLI_PIN=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$CLIPJ')).optionalDependencies?.['$pkg'] || '')" 2>/dev/null)
+  # Skip if package not in any of the 3 (some files only list a subset)
+  if [[ -z "$ROOT_PIN" && -z "$RUFLO_PIN" && -z "$CLI_PIN" ]]; then
+    continue
+  fi
+  # Compare non-empty pins — they must all match.
+  PINS=$(echo "$ROOT_PIN $RUFLO_PIN $CLI_PIN" | tr ' ' '\n' | grep -v '^$' | sort -u | wc -l | tr -d ' ')
+  if [[ "$PINS" != "1" ]]; then
+    miss="$miss ${pkg}-pin-drift:root=${ROOT_PIN},ruflo=${RUFLO_PIN},cli=${CLI_PIN}"
+  fi
+done
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z73. metaharness packages tilde-pinned (anti-caret regression, iter 110)"
 miss=""
 # ADR-150 architectural-constraint review-round-1 mandated tilde pinning
