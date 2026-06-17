@@ -117,8 +117,14 @@ function bench(label, a, b, iters) {
 }
 
 // ───────────────────────────────────────────────────────────────────
-console.log(`# bench-similarity — ADR-152 §3.1 per-call cost\n`);
-console.log(`iters: ${ARGS.iters.toLocaleString()}\n`);
+// iter 87 — suppress markdown header when --format json so the file
+// captured via `> /tmp/bench-similarity.json` is valid JSON. Iter 82's
+// CI step JSON.parse'd the captured file but silently failed because
+// the `# bench-similarity` header contaminated the input.
+if (ARGS.format !== 'json') {
+  console.log(`# bench-similarity — ADR-152 §3.1 per-call cost\n`);
+  console.log(`iters: ${ARGS.iters.toLocaleString()}\n`);
+}
 
 const results = [
   bench('cheap', CHEAP, CHEAP, ARGS.iters),

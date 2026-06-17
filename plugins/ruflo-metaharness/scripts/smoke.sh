@@ -191,6 +191,26 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z50. bench --format json produces valid JSON + bench-parse wired in CI (iter 87)"
+miss=""
+# Both bench scripts suppress markdown header in --format json mode
+for B in bench-similarity bench-parse-mcp-scan; do
+  F="$ROOT/scripts/${B}.mjs"
+  grep -q "ARGS.format !== 'json'" "$F" 2>/dev/null || miss="$miss no-format-guard-${B}"
+done
+# Runtime: both produce parseable JSON files
+TMP1=$(mktemp); TMP2=$(mktemp)
+node "$ROOT/scripts/bench-similarity.mjs" --iters 2000 --format json > "$TMP1" 2>/dev/null
+node "$ROOT/scripts/bench-parse-mcp-scan.mjs" --iters 2000 --format json > "$TMP2" 2>/dev/null
+node -e "JSON.parse(require('fs').readFileSync('$TMP1'))" 2>/dev/null || miss="$miss bench-similarity-not-valid-json"
+node -e "JSON.parse(require('fs').readFileSync('$TMP2'))" 2>/dev/null || miss="$miss bench-parse-not-valid-json"
+rm -f "$TMP1" "$TMP2"
+# CI workflow wires iter-87 bench
+W="$ROOT/../../.github/workflows/metaharness-ci.yml"
+grep -q "bench-parse-mcp-scan.mjs" "$W" 2>/dev/null || miss="$miss bench-parse-not-in-ci"
+grep -q "bench-parse-mcp-scan-\${{ github.run_id }}" "$W" 2>/dev/null || miss="$miss no-bench-parse-artifact"
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z49. parseMcpScanText perf bench (iter 86)"
 miss=""
 F="$ROOT/scripts/bench-parse-mcp-scan.mjs"

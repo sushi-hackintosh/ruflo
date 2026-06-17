@@ -89,8 +89,12 @@ function bench(label, input, iters) {
   };
 }
 
-console.log(`# bench-parse-mcp-scan — iter-50 parser per-call cost\n`);
-console.log(`iters: ${ARGS.iters.toLocaleString()}\n`);
+// iter 87 — suppress markdown header in --format json so captured
+// file stays valid JSON.
+if (ARGS.format !== 'json') {
+  console.log(`# bench-parse-mcp-scan — iter-50 parser per-call cost\n`);
+  console.log(`iters: ${ARGS.iters.toLocaleString()}\n`);
+}
 
 const results = [
   bench('empty', EMPTY, ARGS.iters),
