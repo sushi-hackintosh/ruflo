@@ -138,13 +138,16 @@ jobs:
         run: |
           # iter 117 — `npm install` in a single v3 workspace pkg fails with
           # EUNSUPPORTEDPROTOCOL "workspace:*" because the workspace uses pnpm
-          # (v3/pnpm-workspace.yaml). Install at workspace root with pnpm, then
-          # cd into the pkg to build. pnpm@8.15.0 matches v3/package.json's
-          # packageManager pin (newer pnpm would emit a v9+ lockfile format).
+          # (v3/pnpm-workspace.yaml). Install at workspace root with pnpm.
+          # iter 119 — cli imports from `@claude-flow/cli-core/types` etc., so
+          # the workspace siblings cli depends on must be built FIRST. The
+          # `-F @claude-flow/cli...` filter (note trailing ellipsis) builds
+          # cli plus all its workspace dependencies in topological order.
+          # pnpm@8.15.0 matches v3/package.json's packageManager pin.
           cd v3
           npx -y pnpm@8.15.0 install --frozen-lockfile --reporter=append-only
+          npx -y pnpm@8.15.0 -F "@claude-flow/cli..." run build
           cd @claude-flow/cli
-          npx -y pnpm@8.15.0 run build
           cd ../../..
           node plugins/ruflo-metaharness/scripts/test-mcp-tools.mjs
 
@@ -194,13 +197,16 @@ jobs:
         run: |
           # iter 117 — `npm install` in a single v3 workspace pkg fails with
           # EUNSUPPORTEDPROTOCOL "workspace:*" because the workspace uses pnpm
-          # (v3/pnpm-workspace.yaml). Install at workspace root with pnpm, then
-          # cd into the pkg to build. pnpm@8.15.0 matches v3/package.json's
-          # packageManager pin (newer pnpm would emit a v9+ lockfile format).
+          # (v3/pnpm-workspace.yaml). Install at workspace root with pnpm.
+          # iter 119 — cli imports from `@claude-flow/cli-core/types` etc., so
+          # the workspace siblings cli depends on must be built FIRST. The
+          # `-F @claude-flow/cli...` filter (note trailing ellipsis) builds
+          # cli plus all its workspace dependencies in topological order.
+          # pnpm@8.15.0 matches v3/package.json's packageManager pin.
           cd v3
           npx -y pnpm@8.15.0 install --frozen-lockfile --reporter=append-only
+          npx -y pnpm@8.15.0 -F "@claude-flow/cli..." run build
           cd @claude-flow/cli
-          npx -y pnpm@8.15.0 run build
 
       - name: eject dry-run produces a valid plan
         run: |
@@ -353,13 +359,16 @@ jobs:
         run: |
           # iter 117 — `npm install` in a single v3 workspace pkg fails with
           # EUNSUPPORTEDPROTOCOL "workspace:*" because the workspace uses pnpm
-          # (v3/pnpm-workspace.yaml). Install at workspace root with pnpm, then
-          # cd into the pkg to build. pnpm@8.15.0 matches v3/package.json's
-          # packageManager pin (newer pnpm would emit a v9+ lockfile format).
+          # (v3/pnpm-workspace.yaml). Install at workspace root with pnpm.
+          # iter 119 — cli imports from `@claude-flow/cli-core/types` etc., so
+          # the workspace siblings cli depends on must be built FIRST. The
+          # `-F @claude-flow/cli...` filter (note trailing ellipsis) builds
+          # cli plus all its workspace dependencies in topological order.
+          # pnpm@8.15.0 matches v3/package.json's packageManager pin.
           cd v3
           npx -y pnpm@8.15.0 install --frozen-lockfile --reporter=append-only
+          npx -y pnpm@8.15.0 -F "@claude-flow/cli..." run build
           cd @claude-flow/cli
-          npx -y pnpm@8.15.0 run build
 
       - name: CLI dispatcher round-trip — `node bin/cli.js metaharness similarity` (iter 36)
         # Proves the iter-36 SUBCOMMANDS entry actually dispatches at the
@@ -446,13 +455,16 @@ jobs:
           set -e
           # iter 117 — `npm install` in a single v3 workspace pkg fails with
           # EUNSUPPORTEDPROTOCOL "workspace:*" because the workspace uses pnpm
-          # (v3/pnpm-workspace.yaml). Install at workspace root with pnpm, then
-          # cd into the pkg to build. pnpm@8.15.0 matches v3/package.json's
-          # packageManager pin (newer pnpm would emit a v9+ lockfile format).
+          # (v3/pnpm-workspace.yaml). Install at workspace root with pnpm.
+          # iter 119 — cli imports from `@claude-flow/cli-core/types` etc., so
+          # the workspace siblings cli depends on must be built FIRST. The
+          # `-F @claude-flow/cli...` filter (note trailing ellipsis) builds
+          # cli plus all its workspace dependencies in topological order.
+          # pnpm@8.15.0 matches v3/package.json's packageManager pin.
           cd v3
           npx -y pnpm@8.15.0 install --frozen-lockfile --reporter=append-only
+          npx -y pnpm@8.15.0 -F "@claude-flow/cli..." run build
           cd @claude-flow/cli
-          npx -y pnpm@8.15.0 run build
           cd ../../../
           OUT=$(node v3/@claude-flow/cli/bin/cli.js metaharness score --path . --format json)
           echo "$OUT" | grep -q '"harnessFit"' || { echo "FAIL: score dispatcher dropped harnessFit"; exit 1; }
