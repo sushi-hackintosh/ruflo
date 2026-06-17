@@ -316,6 +316,28 @@ async function main() {
     // iter 54 — metaharness_drift_from_history positive case
     const driftTool = tools.find((t) => t.name === 'metaharness_drift_from_history');
     if (driftTool) {
+      // iter 71 — verify iter-66/67 fast-path flags are now MCP-callable
+      // Synthesize a baseline file on disk; pass via the new baselineFile input.
+      const baselinePath = pjoin(tmp, 'drift-baseline.json');
+      writeFileSync(baselinePath, JSON.stringify({
+        startedAt: '2026-06-16T00:00:00Z',
+        composite: { worst: 'clean' },
+        components: { oiaManifest: {}, threatModel: {}, mcpScan: { json: { findings: [] } } },
+        fingerprint: {
+          score: { harnessFit: 82, recommendedMode: 'CLI + MCP', archetype: 'typescript-sdk-harness', template: 'vertical:coding' },
+          genome: { repo_type: 'node_mcp_ci', agent_topology: ['m', 't'], risk_score: 0.3 },
+        },
+      }));
+      const rFastFast = await driftTool.handler({
+        path: '.', dryRun: true, threshold: 0.5, baselineFile: baselinePath,
+      });
+      if (!rFastFast.degraded) {
+        assert(rFastFast.data?.timing?.usedBaselineFile === true,
+          'drift_from_history MCP-layer: baselineFile fastpath fires (iter 71)');
+        assert(rFastFast.data?.timing?.skippedAuditList === true,
+          'drift_from_history MCP-layer: skippedAuditList=true via baselineFile (iter 71)');
+      }
+
       const r54 = await driftTool.handler({ path: '.', dryRun: true, threshold: 0.5 });
       if (!r54.degraded) {
         assert(typeof r54.data === 'object' && r54.data !== null,

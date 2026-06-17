@@ -292,13 +292,15 @@ export const metaharnessTools: MCPTool[] = [
   },
   {
     name: 'metaharness_drift_from_history',
-    description: 'iter 53 — one-command drift detection. Composes audit-list + oia-audit + audit-trend: finds the most recent record in `metaharness-audit` namespace, runs a fresh audit against the current path, diffs via ADR-152 §3.1 similarity, alerts when structural similarity falls below `threshold`. Use BEFORE recommending the user act on drift — this returns a structured report rather than requiring 3 separate tool calls. ' + MCP_SUCCESS_SEMANTIC,
+    description: 'iter 53 — one-command drift detection. Composes audit-list + oia-audit + audit-trend: finds the most recent record in `metaharness-audit` namespace (or skips that with `baselineKey`/`baselineFile`), runs a fresh audit against the current path, diffs via ADR-152 §3.1 similarity, alerts when structural similarity falls below `threshold`. Use BEFORE recommending the user act on drift — this returns a structured report rather than requiring 3 separate tool calls. Iter 66+67 added fastpaths: `baselineKey` skips audit-list (~14x faster); `baselineFile` skips both audit-list AND memory roundtrip (~19x faster, ideal for CI artifact pipelines). ' + MCP_SUCCESS_SEMANTIC,
     category: 'metaharness',
     inputSchema: {
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Repo path to audit (default: cwd)', default: '.' },
         baselineSince: { type: 'string', description: 'Use a baseline at least N(h|d|w) old, e.g. "7d" — skips drift against ultra-recent audits' },
+        baselineKey: { type: 'string', description: 'iter 66 — explicit memory key for the baseline audit. Skips audit-list (no ONNX warmup). Get from `metaharness_audit_list` first.' },
+        baselineFile: { type: 'string', description: 'iter 67 — file path to a saved oia-audit JSON. Skips audit-list AND memory roundtrip. Ideal for CI artifact pipelines (e.g., comparing this run vs a downloaded prior-run artifact).' },
         threshold: { type: 'number', description: 'Alert when structural similarity < N. Default 0.95.', default: 0.95 },
         dryRun: { type: 'boolean', description: 'Skip persisting the fresh audit to memory', default: false },
       },
@@ -307,6 +309,8 @@ export const metaharnessTools: MCPTool[] = [
       const args: string[] = [];
       args.push('--path', String(input.path ?? '.'));
       if (input.baselineSince) args.push('--baseline-since', String(input.baselineSince));
+      if (input.baselineKey) args.push('--baseline-key', String(input.baselineKey));
+      if (input.baselineFile) args.push('--baseline-file', String(input.baselineFile));
       if (input.threshold !== undefined) args.push('--threshold', String(input.threshold));
       if (input.dryRun === true) args.push('--dry-run');
       const r = await runScript('drift-from-history.mjs', args);

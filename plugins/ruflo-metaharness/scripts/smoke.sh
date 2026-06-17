@@ -191,6 +191,21 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z34. drift_from_history MCP tool exposes baselineKey + baselineFile (iter 71)"
+miss=""
+WRAPPER="$ROOT/../../v3/@claude-flow/cli/src/mcp-tools/metaharness-tools.ts"
+grep -q "baselineKey:" "$WRAPPER" 2>/dev/null || miss="$miss no-baseline-key-input"
+grep -q "baselineFile:" "$WRAPPER" 2>/dev/null || miss="$miss no-baseline-file-input"
+grep -q "args.push('--baseline-key'" "$WRAPPER" 2>/dev/null || miss="$miss no-baseline-key-arg-push"
+grep -q "args.push('--baseline-file'" "$WRAPPER" 2>/dev/null || miss="$miss no-baseline-file-arg-push"
+# Description mentions both fastpath multipliers
+grep -q "14x faster" "$WRAPPER" 2>/dev/null || miss="$miss no-14x-mention"
+grep -q "19x faster" "$WRAPPER" 2>/dev/null || miss="$miss no-19x-mention"
+# Phase 4 test exercises the new MCP-layer fastpath
+T="$ROOT/scripts/test-mcp-tools.mjs"
+grep -q "MCP-layer: baselineFile fastpath fires" "$T" 2>/dev/null || miss="$miss no-mcp-fastpath-test"
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z33. weekly cron drift detection fires even on audit failure (iter 70)"
 miss=""
 F="$ROOT/../../.github/workflows/oia-audit-weekly.yml"
