@@ -191,6 +191,61 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z65. orphaned scripts detector — every .mjs is referenced (iter 102)"
+miss=""
+# Reverse direction of iter-89/90/91. Each script in scripts/ should be
+# referenced by at least one of:
+#   - SUBCOMMANDS map (CLI dispatcher)
+#   - runScript() call (MCP tool handler)
+#   - SKILL.md inline reference (skill manifest)
+#   - smoke.sh (referenced as a test target — covers bench/test scripts)
+#   - oia-audit-weekly.yml or metaharness-ci.yml (CI workflow steps)
+# Exclusions: underscore-prefix files (_harness.mjs, _similarity.mjs)
+# are shared utility modules imported, not invoked directly — they're
+# covered by static-grep of import statements.
+SCRIPTS_DIR="$ROOT/scripts"
+DISP="$ROOT/../../v3/@claude-flow/cli/src/commands/metaharness.ts"
+WRAPPER="$ROOT/../../v3/@claude-flow/cli/src/mcp-tools/metaharness-tools.ts"
+CIM="$ROOT/../../.github/workflows/metaharness-ci.yml"
+CIW="$ROOT/../../.github/workflows/oia-audit-weekly.yml"
+SMOKE="$ROOT/scripts/smoke.sh"
+COUNT=0
+ORPHAN=0
+for f in "$SCRIPTS_DIR"/*.mjs; do
+  base=$(basename "$f")
+  COUNT=$((COUNT + 1))
+  # Underscore-prefix = shared util OR regression anchor. Accept either:
+  #   (a) imported by another script (e.g., _harness.mjs imported widely)
+  #   (b) referenced by smoke.sh or CI workflow as a standalone invocation
+  #       (e.g., _spike-similarity.mjs is run directly as a regression anchor)
+  if [[ "$base" == _* ]]; then
+    if grep -qrE "from '\./${base}'" "$SCRIPTS_DIR" 2>/dev/null \
+       || grep -q "${base}" "$SMOKE" 2>/dev/null \
+       || grep -q "${base}" "$CIM" 2>/dev/null \
+       || grep -q "${base}" "$CIW" 2>/dev/null; then
+      : # referenced
+    else
+      miss="$miss ${base}-not-referenced"
+      ORPHAN=$((ORPHAN + 1))
+    fi
+    continue
+  fi
+  # Otherwise: check each reference source
+  if grep -q "${base}" "$DISP" 2>/dev/null || \
+     grep -q "${base}" "$WRAPPER" 2>/dev/null || \
+     find "$ROOT/skills" -name SKILL.md -exec grep -l "${base}" {} \; 2>/dev/null | grep -q . || \
+     grep -q "${base}" "$SMOKE" 2>/dev/null || \
+     grep -q "${base}" "$CIM" 2>/dev/null || \
+     grep -q "${base}" "$CIW" 2>/dev/null; then
+    : # at least one reference found
+  else
+    miss="$miss orphaned-${base}"
+    ORPHAN=$((ORPHAN + 1))
+  fi
+done
+[[ "$COUNT" -ge 20 ]] || miss="$miss script-count-too-low:$COUNT"
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z64. JSON-output gate covers similarity + audit-trend (iter 101)"
 miss=""
 # iter 88 covered 8 scripts. iter 101 extended to 10 (added similarity +
