@@ -170,6 +170,16 @@
       "name": "ruflo-sparc",
       "source": "./plugins/ruflo-sparc",
       "description": "SPARC methodology — Specification, Pseudocode, Architecture, Refinement, Completion phases with quality gates"
+    },
+    {
+      "name": "ruflo-metaharness",
+      "source": "./plugins/ruflo-metaharness",
+      "description": "MetaHarness integration — surfaces score/genome/mint/mcp-scan/threat-model via skills; pairs with @metaharness/router (ADR-148/149) for cost-optimal model routing; honors ADR-150 optional-augmentation constraint"
+    },
+    {
+      "name": "ruflo-arena",
+      "source": "./plugins/ruflo-arena",
+      "description": "Competitive ruliology for ruflo swarms — arenas, tournaments, and adaptive co-evolution of program strategies (ADR-147/148); strategies-as-programs compete under payoff games"
     }
   ]
 }
