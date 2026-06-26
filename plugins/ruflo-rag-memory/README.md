@@ -6,6 +6,29 @@ Retrieval-Augmented Generation memory with HNSW vector search, AgentDB persisten
 
 Provides semantic store/search/recall over AgentDB with HNSW-indexed vector search (150x-12,500x faster than brute force). Bridges Claude Code's native auto-memory into AgentDB with 384-dim ONNX embeddings for unified cross-session semantic retrieval.
 
+## Quick Start
+
+Store and retrieve knowledge across sessions:
+
+```bash
+# Store a pattern you want to remember
+npx ruflo memory store --key "oauth-flow" --value "OAuth2 with pkce for SPAs, use refresh tokens" --namespace patterns
+
+# Search for it later (even across projects!)
+npx ruflo recall "oauth single page app"
+
+# Retrieve exact entry
+npx ruflo memory retrieve --key "oauth-flow" --namespace patterns
+```
+
+Use with agents:
+
+```bash
+# In your Claude Code agent prompt:
+const context = await memory_search({ query: "authentication patterns", limit: 3 });
+// Returns top 3 semantic matches from all sessions
+```
+
 ## Installation
 
 ```bash

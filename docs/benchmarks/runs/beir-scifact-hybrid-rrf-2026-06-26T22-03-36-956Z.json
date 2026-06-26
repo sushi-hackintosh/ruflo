@@ -1,5 +1,5 @@
 {
-  "runAt": "2026-06-26T22:09:59.496Z",
+  "runAt": "2026-06-26T22:03:36.956Z",
   "benchmark": "beir-scifact-hybrid",
   "dataset": "scifact",
   "pipeline": "BM25+BGE RRF",
@@ -13,7 +13,7 @@
     "mrr10": 0.5931878306878305,
     "recall10": 0.7412222222222221,
     "recall100": 0.8283333333333334,
-    "avgQueryLatencyMs": 447.2806572233334
+    "avgQueryLatencyMs": 248.72412000000003
   },
   "perQuery": [
     {
