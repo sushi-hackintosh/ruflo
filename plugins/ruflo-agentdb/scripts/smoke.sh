@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Structural smoke test for ruflo-agentdb plugin v0.3.0.
-# Per ADR-0001 §6 Verification: 10 numbered checks against the documented
+# Per ADR-0001 §6 Verification: 13 numbered checks against the documented
 # CLI MCP surface plus three documentation invariants.
 #
 # This script verifies plugin structural soundness and source-level
