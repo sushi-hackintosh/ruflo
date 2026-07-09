@@ -1,6 +1,8 @@
 <div align="center">
 
 [![Ruflo Banner](ruflo/assets/ruflo-small.jpeg)](https://cognitum.one/agentic-engineering)
+[![Agentics Foundation Banner](docs/assets/sv-summit.png)](https://agentics.org/siliconvalley/?UTM=GH-RuFlo-SV)
+
 
 <!-- Try Ruflo — the 4 badges first-time visitors actually act on -->
 [![Try the UI Beta — flo.ruv.io](https://img.shields.io/badge/_Try_the_UI_Beta-flo.ruv.io-6366f1?style=for-the-badge&logoColor=white&logo=svelte)](https://flo.ruv.io/)
@@ -190,23 +192,6 @@ npm install -g ruflo@latest
 # Add Ruflo as an MCP server in Claude Code (canonical form, matches USERGUIDE.md)
 claude mcp add ruflo -- npx ruflo@latest mcp start
 ```
-
-### Start the Background Daemon (enables self-learning + workers)
-
-The 12 background workers (audit, optimize, testgaps, map, document, …) run under
-the daemon. `init` sets everything up but does **not** start it — run this once so
-learning and the workers are actually live:
-
-```bash
-# Start the background worker daemon
-npx ruflo@latest daemon start
-
-# Verify everything is wired (learning bridge, daemon, memory, MCP)
-npx ruflo@latest doctor --fix
-```
-
-> 💡 `doctor --fix` also repairs the self-learning bridge if `@claude-flow/memory`
-> could not be resolved on the `npx` install path (#2545).
 
 ---
 
