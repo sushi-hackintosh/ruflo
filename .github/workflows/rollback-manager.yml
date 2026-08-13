@@ -38,6 +38,9 @@ env:
   CRITICAL_FAILURE_THRESHOLD: 3
   MONITORING_WINDOW_MINUTES: 15
 
+permissions:
+  contents: write
+
 jobs:
   # Detect failure conditions
   failure-detection:
